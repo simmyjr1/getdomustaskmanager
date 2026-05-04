@@ -128,7 +128,7 @@ export function ForgotPasswordForm({
                 </Button>
 
                 <FieldDescription className="text-center">
-                  Remembered your password? <Link href="/">Sign in</Link>
+                  Remembered your password? <Link href="/login">Sign in</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

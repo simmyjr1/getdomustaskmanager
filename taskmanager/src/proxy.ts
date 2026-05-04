@@ -3,6 +3,13 @@ import { jwtVerify } from 'jose';
 
 const ALG = 'HS256';
 
+const AUTH_PAGES = new Set([
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+]);
+
 function getSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error('AUTH_SECRET is not set');
@@ -21,14 +28,29 @@ async function hasValidAccessToken(request: NextRequest): Promise<boolean> {
 }
 
 export async function proxy(request: NextRequest) {
-  const ok = await hasValidAccessToken(request);
-  if (!ok) {
-    const loginUrl = new URL('/', request.url);
-    return NextResponse.redirect(loginUrl);
+  const { pathname } = request.nextUrl;
+  const authed = await hasValidAccessToken(request);
+
+  if (pathname.startsWith('/dashboard')) {
+    if (!authed) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    return NextResponse.next();
   }
+
+  if (AUTH_PAGES.has(pathname) && authed) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: [
+    '/dashboard/:path*',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+  ],
 };

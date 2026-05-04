@@ -21,7 +21,8 @@ model User {
   refreshTokens       RefreshToken[]
   passwordResetTokens PasswordResetToken[]
 
-  tasks        Task[]
+  createdTasks  Task[] @relation("TaskCreator")
+  assignedTasks Task[] @relation("TaskAssignees")
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -32,14 +33,17 @@ model Task {
   title       String
   description String?
   completed   Boolean  @default(false)
+  dueDate     DateTime?
 
-  assigneeId  String
-  assignee    User     @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  assignees   User[]   @relation("TaskAssignees")
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([assigneeId])
+  @@index([createdById])
   @@index([completed])
 }
 

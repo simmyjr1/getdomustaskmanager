@@ -85,9 +85,8 @@ export function SignupForm({
         setError(data.error ?? "Sign up failed")
         return
       }
-      const user = await res.json()
-      console.log("registered:", user)
-      router.push("/")
+      await res.json().catch(() => null)
+      router.push("/dashboard")
     } catch {
       setError("Network error")
     } finally {
@@ -218,7 +217,7 @@ export function SignupForm({
                 </Button>
 
                 <FieldDescription className="text-center">
-                  Already have an account? <Link href="/">Sign in</Link>
+                  Already have an account? <Link href="/login">Sign in</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

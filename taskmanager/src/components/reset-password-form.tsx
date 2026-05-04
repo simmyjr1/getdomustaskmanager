@@ -85,7 +85,7 @@ export function ResetPasswordForm({ token, className, ...props }: Props) {
         return
       }
       setMessage("Password updated. Redirecting to sign in...")
-      setTimeout(() => router.push("/"), 1500)
+      setTimeout(() => router.push("/login"), 1500)
     } catch {
       setError("Network error")
     } finally {
@@ -185,7 +185,7 @@ export function ResetPasswordForm({ token, className, ...props }: Props) {
                 </Button>
 
                 <FieldDescription className="text-center">
-                  Remembered your password? <Link href="/">Sign in</Link>
+                  Remembered your password? <Link href="/login">Sign in</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

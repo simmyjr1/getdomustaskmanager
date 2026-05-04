@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { FormMessage } from "@/components/form-message"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -66,8 +68,8 @@ export function LoginForm({
         setError(data.error ?? "Login failed")
         return
       }
-      const user = await res.json()
-      console.log("logged in:", user)
+      await res.json().catch(() => null)
+      router.push("/dashboard")
     } catch {
       setError("Network error")
     } finally {
