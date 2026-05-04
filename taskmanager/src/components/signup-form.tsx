@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { FormMessage } from "@/components/form-message"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -20,20 +20,27 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { validateEmail } from "@/lib/auth/validation"
+import {
+  validateEmail,
+  validatePassword,
+  validateConfirmPassword,
+} from "@/lib/auth/validation"
 
 type FieldErrors = {
   email?: string | null
   password?: string | null
+  confirmPassword?: string | null
 }
 
-export function LoginForm({
+export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter()
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
@@ -49,23 +56,33 @@ export function LoginForm({
     setError(null)
 
     const emailErr = validateEmail(email)
-    const passwordErr = !password ? "Password is required" : null
-    if (emailErr || passwordErr) {
-      setFieldErrors({ email: emailErr, password: passwordErr })
+    const passwordErr = validatePassword(password)
+    const confirmErr = validateConfirmPassword(password, confirmPassword)
+
+    if (emailErr || passwordErr || confirmErr) {
+      setFieldErrors({
+        email: emailErr,
+        password: passwordErr,
+        confirmPassword: confirmErr,
+      })
       return
     }
 
     setFieldErrors({})
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          name: name.trim() || undefined,
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? "Login failed")
+        setError(data.error ?? "Sign up failed")
         return
       }
       await res.json().catch(() => null)
@@ -81,15 +98,26 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl"> Welcome </CardTitle>
+          <CardTitle className="text-xl"> Create your account </CardTitle>
           <CardDescription>
-            Login to your Get Domus TM account
+            Sign up for your Get Domus TM account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} noValidate>
             <FieldGroup>
               {error && <FormMessage type="error" message={error} />}
+
+              <Field>
+                <FieldLabel htmlFor="name">Full Name</FieldLabel>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Field>
 
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -119,15 +147,7 @@ export function LoginForm({
               </Field>
 
               <Field>
-                <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Link
-                    href="/forgot-password"
-                    className="ml-auto text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
+                <FieldLabel htmlFor="password">Password</FieldLabel>
                 <Input
                   id="password"
                   type="password"
@@ -135,18 +155,53 @@ export function LoginForm({
                   onChange={(e) => {
                     setPassword(e.target.value)
                     clearFieldError("password")
+                    if (confirmPassword) clearFieldError("confirmPassword")
                   }}
                   onBlur={() =>
                     setFieldErrors((prev) => ({
                       ...prev,
-                      password: !password ? "Password is required" : null,
+                      password: validatePassword(password),
                     }))
                   }
                 />
+                <FieldDescription>
+                  Must be at least 8 characters long.
+                </FieldDescription>
                 {fieldErrors.password && (
                   <FormMessage
                     type="error"
                     message={fieldErrors.password}
+                    compact
+                  />
+                )}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor="confirm-password">
+                  Confirm Password
+                </FieldLabel>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value)
+                    clearFieldError("confirmPassword")
+                  }}
+                  onBlur={() =>
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      confirmPassword: validateConfirmPassword(
+                        password,
+                        confirmPassword,
+                      ),
+                    }))
+                  }
+                />
+                {fieldErrors.confirmPassword && (
+                  <FormMessage
+                    type="error"
+                    message={fieldErrors.confirmPassword}
                     compact
                   />
                 )}
@@ -158,11 +213,11 @@ export function LoginForm({
                   disabled={loading}
                   className="bg-orange-500 text-white hover:bg-orange-600"
                 >
-                  {loading ? "Logging in..." : "Login"}
+                  {loading ? "Creating account..." : "Create account"}
                 </Button>
 
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link href="/signup">Sign up</Link>
+                  Already have an account? <Link href="/login">Sign in</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>

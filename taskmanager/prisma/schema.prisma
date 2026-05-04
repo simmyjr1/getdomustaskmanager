@@ -18,9 +18,11 @@ model User {
   passwordHash String
   name         String?
   timeZone     String   @default("UTC")
-  refreshTokens RefreshToken[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
 
-  tasks        Task[]
+  createdTasks  Task[] @relation("TaskCreator")
+  assignedTasks Task[] @relation("TaskAssignees")
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -31,14 +33,17 @@ model Task {
   title       String
   description String?
   completed   Boolean  @default(false)
+  dueDate     DateTime?
 
-  assigneeId  String
-  assignee    User     @relation(fields: [assigneeId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  assignees   User[]   @relation("TaskAssignees")
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([assigneeId])
+  @@index([createdById])
   @@index([completed])
 }
 
@@ -49,6 +54,18 @@ model RefreshToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId])
