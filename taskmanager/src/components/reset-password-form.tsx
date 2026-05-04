@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { FormMessage } from "@/components/form-message"
 import { cn } from "@/lib/utils"
@@ -19,22 +20,30 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { validateEmail } from "@/lib/auth/validation"
+import {
+  validatePassword,
+  validateConfirmPassword,
+} from "@/lib/auth/validation"
 
-type FieldErrors = {
-  email?: string | null
-  password?: string | null
+type Props = React.ComponentProps<"div"> & {
+  token: string
 }
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  const [email, setEmail] = useState("")
+type FieldErrors = {
+  password?: string | null
+  confirmPassword?: string | null
+}
+
+export function ResetPasswordForm({ token, className, ...props }: Props) {
+  const router = useRouter()
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
+
+  const tokenMissing = token.length === 0
 
   function clearFieldError(field: keyof FieldErrors) {
     setFieldErrors((prev) =>
@@ -45,29 +54,38 @@ export function LoginForm({
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setMessage(null)
 
-    const emailErr = validateEmail(email)
-    const passwordErr = !password ? "Password is required" : null
-    if (emailErr || passwordErr) {
-      setFieldErrors({ email: emailErr, password: passwordErr })
+    if (tokenMissing) {
+      setError("Reset token is missing from the URL")
+      return
+    }
+
+    const passwordErr = validatePassword(password)
+    const confirmErr = validateConfirmPassword(password, confirmPassword)
+    if (passwordErr || confirmErr) {
+      setFieldErrors({
+        password: passwordErr,
+        confirmPassword: confirmErr,
+      })
       return
     }
 
     setFieldErrors({})
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ token, newPassword: password }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        setError(data.error ?? "Login failed")
+        setError(data.error ?? "Reset failed")
         return
       }
-      const user = await res.json()
-      console.log("logged in:", user)
+      setMessage("Password updated. Redirecting to sign in...")
+      setTimeout(() => router.push("/"), 1500)
     } catch {
       setError("Network error")
     } finally {
@@ -79,53 +97,25 @@ export function LoginForm({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-xl"> Welcome </CardTitle>
+          <CardTitle className="text-xl"> Set a new password </CardTitle>
           <CardDescription>
-            Login to your Get Domus TM account
+            Choose a new password for your Get Domus TM account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} noValidate>
             <FieldGroup>
-              {error && <FormMessage type="error" message={error} />}
-
-              <Field>
-                <FieldLabel htmlFor="email">Email</FieldLabel>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="m@example.com"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    clearFieldError("email")
-                  }}
-                  onBlur={() =>
-                    setFieldErrors((prev) => ({
-                      ...prev,
-                      email: validateEmail(email),
-                    }))
-                  }
+              {tokenMissing && !error && (
+                <FormMessage
+                  type="error"
+                  message="Reset token is missing from the URL"
                 />
-                {fieldErrors.email && (
-                  <FormMessage
-                    type="error"
-                    message={fieldErrors.email}
-                    compact
-                  />
-                )}
-              </Field>
+              )}
+              {error && <FormMessage type="error" message={error} />}
+              {message && <FormMessage type="success" message={message} />}
 
               <Field>
-                <div className="flex items-center">
-                  <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Link
-                    href="/forgot-password"
-                    className="ml-auto text-sm underline-offset-4 hover:underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                </div>
+                <FieldLabel htmlFor="password">New password</FieldLabel>
                 <Input
                   id="password"
                   type="password"
@@ -133,14 +123,18 @@ export function LoginForm({
                   onChange={(e) => {
                     setPassword(e.target.value)
                     clearFieldError("password")
+                    if (confirmPassword) clearFieldError("confirmPassword")
                   }}
                   onBlur={() =>
                     setFieldErrors((prev) => ({
                       ...prev,
-                      password: !password ? "Password is required" : null,
+                      password: validatePassword(password),
                     }))
                   }
                 />
+                <FieldDescription>
+                  Must be at least 8 characters long.
+                </FieldDescription>
                 {fieldErrors.password && (
                   <FormMessage
                     type="error"
@@ -151,16 +145,47 @@ export function LoginForm({
               </Field>
 
               <Field>
+                <FieldLabel htmlFor="confirm-password">
+                  Confirm new password
+                </FieldLabel>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value)
+                    clearFieldError("confirmPassword")
+                  }}
+                  onBlur={() =>
+                    setFieldErrors((prev) => ({
+                      ...prev,
+                      confirmPassword: validateConfirmPassword(
+                        password,
+                        confirmPassword,
+                      ),
+                    }))
+                  }
+                />
+                {fieldErrors.confirmPassword && (
+                  <FormMessage
+                    type="error"
+                    message={fieldErrors.confirmPassword}
+                    compact
+                  />
+                )}
+              </Field>
+
+              <Field>
                 <Button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || tokenMissing}
                   className="bg-orange-500 text-white hover:bg-orange-600"
                 >
-                  {loading ? "Logging in..." : "Login"}
+                  {loading ? "Updating..." : "Update password"}
                 </Button>
 
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link href="/signup">Sign up</Link>
+                  Remembered your password? <Link href="/">Sign in</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
